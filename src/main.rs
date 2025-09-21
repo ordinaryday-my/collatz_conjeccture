@@ -1,7 +1,5 @@
 use std::io;
 use std::io::Write;
-use std::thread;
-use std::time::Duration;
 
 fn main() {
     print!("Start Number: ");
@@ -13,36 +11,79 @@ fn main() {
     const MAX_WIDTH: usize = 1000;
     let start: usize = start.trim().parse().expect("Please type a number!");
     println!("====================================");
-    let mut num_1_cnt = 0;
-    let mut cur = start;
-    loop {
-        cur = if cur % 2 != 0 {
-            3usize.checked_mul(cur).unwrap_or_else(|| {
-                println!("Overflow occurred. Exiting...");
-                std::process::exit(1);
-            }).checked_add(1).unwrap_or_else(|| {
-                    println!("Overflow occurred. Exiting...");
-                    std::process::exit(1);
-                })
-        } else {
-            cur / 2
-        };
 
-        if num_1_cnt > 40 {
-            break;
-        }
+    let (seq, step) = generate_collatz_sequence(start).unwrap_or_else(|err| {
+        println!("{err}");
+        std::process::exit(1);
+    });
+    println!("Generated {} steps.", step);
 
-        print!("{text:>width$}:{num}", text="*", width=cur.min(MAX_WIDTH), num=cur);
-        if cur == 1 {
-            num_1_cnt += 1;
-            if num_1_cnt > 3 {
-                print!("        Endless cycle..................")
-            }
-        }
-        println!();
-        thread::sleep(Duration::from_millis(100));
+    for val in seq {
+        let val = val.min(MAX_WIDTH);
+        println!("{:>width$}:{val}", "*", width = val)
     }
 
     println!("====================================");
     println!("Without exception.");
+}
+
+fn generate_collatz_sequence(start: usize) -> Result<(Vec<usize>, usize), String> {
+    #[derive(Clone, Copy)]
+    struct State {
+        current: usize,
+        one_count: usize,
+    }
+
+    let mut seq_iter = std::iter::from_fn({
+        let mut state: State = State {
+            current: start,
+            one_count: 0,
+        };
+        let mut overflowed = false;
+
+        move || {
+            if overflowed {
+                return None;
+            }
+
+            let next_val = if state.current % 2 != 0 {
+                3usize
+                    .checked_mul(state.current)
+                    .and_then(|x| x.checked_add(1))
+            } else {
+                Some(state.current / 2)
+            };
+
+            match next_val {
+                Some(val) => {
+                    let new_count_1 = if val == 1 {
+                        state.one_count + 1
+                    } else {
+                        state.one_count
+                    };
+                    if new_count_1 > 40 {
+                        None
+                    } else {
+                        state.one_count = new_count_1;
+                        state.current = val;
+                        Some(Ok(val))
+                    }
+                }
+                None => {
+                    overflowed = true;
+                    Some(Err("Overflow occurred".to_string()))
+                },
+            }
+        }
+    });
+
+    seq_iter.try_fold((Vec::new(), 0usize), |(mut vec, count), val| {
+        match val {
+            Ok(v) => {
+                vec.push(v);
+                Ok((vec, count + 1))
+            }
+            Err(e) => Err(e),
+        }
+    })
 }
