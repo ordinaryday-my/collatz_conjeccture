@@ -1,0 +1,5 @@
+/target
+# 完全过滤 RustRover 配置目录
+.idea/
+
+Thumbs.db
