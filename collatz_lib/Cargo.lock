@@ -3,12 +3,5 @@
 version = 4
 
 [[package]]
-name = "collatz_conjeccture"
-version = "0.1.0"
-dependencies = [
- "collatz_lib",
-]
-
-[[package]]
 name = "collatz_lib"
 version = "0.1.0"
